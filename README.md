@@ -2,7 +2,14 @@
 
 
 ## Usage
-
+```
+conda create LoRA_for_IR
+conda activate LoRA_for_IR
+git clone git@github.com:Kaiwang11/LoRA_for_IR.git
+cd LoRA_for_IR
+```
+pip install -e.
+```
 ### Data Loading
 
 To download the data, run the following command:
@@ -16,5 +23,7 @@ python data_load.py
 python src/main.py \
 --epoch 1\
 --dataset nfcorpus\
---exp 
+--exp experiment name\
+--dora False\
+--vera False
 ```
