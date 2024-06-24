@@ -21,13 +21,14 @@ class LoraTransformer(nn.Module):
                  model_args: Dict = {}, cache_dir: Optional[str] = None,
                  tokenizer_args: Dict = {}, do_lower_case: bool = False,
                  tokenizer_name_or_path : str = None,
-                 lora_config:Dict={} ):
+                 lora_config:Dict={},dora: bool=False,vera:bool=False ):
         
 
         super(LoraTransformer, self).__init__()
         self.config_keys = ['max_seq_length', 'do_lower_case']
         self.do_lower_case = do_lower_case
-
+        self.dora=dora
+        self.vera=vera
         config = AutoConfig.from_pretrained(model_name_or_path, **model_args, cache_dir=cache_dir)
         self._load_model(model_name_or_path, config,lora_config, cache_dir)
         
@@ -91,7 +92,23 @@ class LoraTransformer(nn.Module):
         trans_features = {'input_ids': features['input_ids'], 'attention_mask': features['attention_mask']}
         if 'token_type_ids' in features:
             trans_features['token_type_ids'] = features['token_type_ids']
+        if self.dora==True:
+            modules=[name for name,param in self.auto_model.named_parameters()  if param.requires_grad and 'lora_magnitude_vector' in name and  str(self.num_hidden_layers-1) in name]
 
+            mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
+        elif self.vera==True:
+            modules=[name for name,param in self.auto_model.named_parameters()  if param.requires_grad and 'vera_lambda_b' in name and  str(self.num_hidden_layers-1) in name]
+
+        else:
+            modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and   'lora_A' in name and str(self.num_hidden_layers-1) in name]
+
+        A_qlin_weight=self.auto_model.get_submodule(modules[0][:-7]).weight
+        A_klin_weight=self.auto_model.get_submodule(modules[1][:-7]).weight
+        A_vlin_weight=self.auto_model.get_submodule(modules[2][:-7]).weight
+        A_outlin_weight=self.auto_model.get_submodule(modules[3][:-7]).weight
+
+        if A_qlin_weight.sum()==0:
+            A_qlin_weight=torch.ones_like(A_qlin_weight)
         output_states = self.auto_model(**trans_features, return_dict=False)
         output_tokens = output_states[0]
         features.update({'token_embeddings': output_tokens, 'attention_mask': features['attention_mask']})

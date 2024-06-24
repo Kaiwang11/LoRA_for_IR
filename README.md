@@ -3,7 +3,7 @@
 
 ## Usage
 ```
-conda create LoRA_for_IR
+conda create -n LoRA_for_IR python=3.10
 conda activate LoRA_for_IR
 git clone git@github.com:Kaiwang11/LoRA_for_IR.git
 cd LoRA_for_IR

@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: sentence_transformers
+Version: 0.1
+Requires-Dist: peft
+Requires-Dist: transformers
+Requires-Dist: torch
+Requires-Dist: scikit-learn
+Requires-Dist: pillow
+Requires-Dist: nltk

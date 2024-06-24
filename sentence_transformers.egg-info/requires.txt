@@ -1,0 +1,6 @@
+peft
+transformers
+torch
+scikit-learn
+pillow
+nltk

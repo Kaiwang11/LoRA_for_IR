@@ -75,7 +75,7 @@ dev_corpus, dev_queries, dev_qrels = GenericDataLoader(data_path_test).load(spli
 tracemalloc.start()
 model_name ="distilbert-base-uncased"
 
-word_embedding_model = models.LoraTransformer(model_name,lora_config=lora_config, max_seq_length=350,)
+word_embedding_model = models.LoraTransformer(model_name,lora_config=lora_config, max_seq_length=350,dora=args.dora,vera=args.vera)
 pooling_model = models.Pooling(pooling_mode=args.pool_mode,word_embedding_dimension=word_embedding_model.get_word_embedding_dimension())
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 # snap = tracemalloc.take_snapshot()
