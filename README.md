@@ -21,9 +21,15 @@ python data_load.py
 
 ```bash
 python src/main.py \
---epoch 1\
---dataset nfcorpus\
---exp experiment name\
---dora False\
---vera False
+-epoch 1\
+-d nfcorpus\ #dataset name
+-exp_name experiment name\ #any name of checkpoint.
+-dora False\
+-vera False\
 ```
+For more help :
+```
+```bash
+python src/main.py -h 
+```
+
