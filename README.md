@@ -1,5 +1,9 @@
 # LoRA_for_IR
-
+##
+This is a repo for finetune LLM by LoRA on Retrieval task.
+We design two methods to re-weight the sentence embedding by element-wise multiplication with LoRA matrix.
+The overview can be described by picture below  below :
+![](structure.png)
 
 ## Usage
 ```
