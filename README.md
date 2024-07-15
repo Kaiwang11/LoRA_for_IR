@@ -4,7 +4,7 @@ This is a repo for finetune LLM by LoRA on Retrieval task.
 We design two methods to re-weight the sentence embedding by element-wise multiplication with LoRA matrix.
 The overview can be described by picture below:
 <!-- ![](structure.png) -->
-<img src="structure.png" alt="A beautiful landscape" width="100">
+<img src="structure.png" alt="A beautiful landscape" width="300">
 
 
 ## Usage
