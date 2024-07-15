@@ -4,8 +4,9 @@ from torch import nn
 from typing import Union, Tuple, List, Iterable, Dict
 import os
 import json
-
-
+import logging
+import time
+logger = logging.getLogger(__name__)
 class Pooling(nn.Module):
     """Performs pooling (max or mean) on the token embeddings.
 
@@ -27,19 +28,19 @@ class Pooling(nn.Module):
                  pooling_mode_mean_tokens: bool = True,
                  pooling_mode_mean_sqrt_len_tokens: bool = False,
                  pooling_mode_exp:bool = False,
-
+                 s_type : str = 'document' #senetnce type (e.g. query or document)
                  ):
         super(Pooling, self).__init__()
-
+        self.s_type=s_type
         self.config_keys = ['word_embedding_dimension',  'pooling_mode_cls_token', 'pooling_mode_mean_tokens', 'pooling_mode_max_tokens', 'pooling_mode_mean_sqrt_len_tokens','pooling_mode_exp']
 
         if pooling_mode is not None:        #Set pooling mode by string
             pooling_mode = pooling_mode.lower()
-            assert pooling_mode in ['mean', 'max', 'cls','exp']
+            assert pooling_mode in ['mean', 'max', 'cls','single','multi']
             pooling_mode_cls_token = (pooling_mode == 'cls')
             pooling_mode_max_tokens = (pooling_mode == 'max')
             pooling_mode_mean_tokens = (pooling_mode == 'mean')
-            pooling_mode_exp = (pooling_mode == 'exp')
+            pooling_mode_exp = (pooling_mode == 'single' or 'multi')
 
         self.word_embedding_dimension = word_embedding_dimension
         self.pooling_mode_cls_token = pooling_mode_cls_token
@@ -78,18 +79,21 @@ class Pooling(nn.Module):
         attention_mask = features['attention_mask']
         ## Pooling strategy
         output_vectors = []
+
+        # logger.info("Doing Pooling")
         if self.pooling_mode_cls_token:
             cls_token = features.get('cls_token_embeddings', token_embeddings[:, 0])  # Take first token by default
             output_vectors.append(cls_token)
         if self.pooling_mode_max_tokens:
             input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
             token_embeddings[input_mask_expanded == 0] = -1e9  # Set padding tokens to large negative value
-            softmax=nn.Softmax(dim=1)
-            softed=softmax(token_embeddings)
             max_over_time = torch.max(softed, 1)[0]
             output_vectors.append(max_over_time)
         if self.pooling_mode_mean_tokens or self.pooling_mode_mean_sqrt_len_tokens:
-            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+            # input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+            input_mask_expanded = (
+                attention_mask.unsqueeze(-1).expand(token_embeddings.size()).to(token_embeddings.dtype)
+            )
             sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
             
             #If tokens are weighted (by WordWeights layer), feature 'token_weights_sum' will be present
@@ -106,15 +110,18 @@ class Pooling(nn.Module):
                 output_vectors.append(sum_embeddings / torch.sqrt(sum_mask))
         if self.pooling_mode_exp:
             input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-            soft=nn.LogSoftmax()
-            # linear=nn.Linear(token_embeddings.size())
-            # softed=soft(token_embeddings)
-        
-            sum_embeddings = torch.sum(softed * input_mask_expanded, 1)
-            sum_mask = input_mask_expanded.sum(1)
+            sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+            
+            #If tokens are weighted (by WordWeights layer), feature 'token_weights_sum' will be present
+            if 'token_weights_sum' in features:
+                sum_mask = features['token_weights_sum'].unsqueeze(-1).expand(sum_embeddings.size())
+            else:
+                sum_mask = input_mask_expanded.sum(1)
+
             sum_mask = torch.clamp(sum_mask, min=1e-9)
-            output_vectors.append(sum_embeddings / sum_mask)
-           
+            output_vectors.append((sum_embeddings / sum_mask)*features['last_lora'])
+            # output_vectors.append(sum_embeddings / sum_mask)
+        # import IPython;IPython.embed(colors='linux');exit(1)
         output_vector = torch.cat(output_vectors, 1)
         features.update({'sentence_embedding': output_vector})
         return features

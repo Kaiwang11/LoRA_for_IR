@@ -27,7 +27,7 @@ class LoraTransformer(nn.Module):
                  model_args: Dict = {}, cache_dir: Optional[str] = None,
                  tokenizer_args: Dict = {}, do_lower_case: bool = False,
                  tokenizer_name_or_path : str = None,
-                 lora_config:Dict={} ,experiment_type:str=None):
+                 lora_config:Dict={} ,experiment_type:str=None,lora_type=lora_type):
         
 
         super(LoraTransformer, self).__init__()
@@ -39,7 +39,7 @@ class LoraTransformer(nn.Module):
         self.num_hidden_layers=config.num_hidden_layers
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path if tokenizer_name_or_path is not None else model_name_or_path, cache_dir=cache_dir, **tokenizer_args,pad_token='[PAD]')
         self.exp_type=experiment_type
-
+        self.lora_type=lora_type
         #No max_seq_length set. Try to infer from model
         if max_seq_length is None:
             if hasattr(self.auto_model, "config") and hasattr(self.auto_model.config, "max_position_embeddings") and hasattr(self.tokenizer, "model_max_length"):
@@ -110,61 +110,19 @@ class LoraTransformer(nn.Module):
             A_total_weight=self.auto_model.get_submodule(modules[-2][:-7]).weight
             features.update({'last_lora':A_total_weight.mean(dim=0)})
         elif self.exp_type=='multi':
+            modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_A' in name and str(self.num_hidden_layers-1) in name]
+            # A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
+            A_qlin_weight=self.auto_model.get_submodule(modules[0][:-7]).weight
+            A_klin_weight=self.auto_model.get_submodule(modules[1][:-7]).weight
+            A_vlin_weight=self.auto_model.get_submodule(modules[2][:-7]).weight
             soft=nn.Softmax(1)
             weight=soft(torch.matmul(A_qlin_weight.transpose(1,0),A_klin_weight/math.sqrt(384)))*A_vlin_weight.mean(dim=0)
             features.update({'last_lora':weight})
-        # modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_A' in name]
-        # filename='/tmp2/ikwang/beir/examples/retrieval/training/ranks.csv'
-        # for mod in modules :
-        #     w=self.auto_model.get_submodule(mod[:-8]).default
-        #     U, S, V = torch.svd(w)
-        #     rank = torch.sum(S > 1e-10).item()
-        #     # import IPython;IPython.embed(colors='linux');exit(1)
-        #
-        #     if os.path.exists(filename):
-        #         file=open(filename,'a')
-        #         file.writelines(mod[29:-7]+','+str(rank)+'\n')
-        #     else:
-        #
-        #         file=open(filename,'w')
-        #         file.writelines(mod[29:-7]+','+str(rank)+'\n')
-        # import IPython;IPython.embed(colors='linux');exit(1)
-        #
-        # modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_magnitude_vector' in name and str(self.num_hidden_layers-1) in name]
-        # import IPython;IPython.embed(colors='linux');exit(1)
-        # A_total_weight=torch.sum(torch.stack([self.auto_model.get_submodule(module[:-7]).weight.mean(dim=0) for module in modules]),dim=0)
-
-
-        # import IPython;IPython.embed(colors='linux');exit(1)
-        # A_weight=self.auto_model.get_submodule('base_model.model.transformer.layer.5.attention.out_lin.lora_A.default').weight#.mean(dim=0)
-        
-        # A_qlin_weight=self.auto_model.get_submodule('base_model.model.encoder.layer.11.attention.self.query.lora_A.default').weight
-        # A_klin_weight=self.auto_model.get_submodule('base_model.model.encoder.layer.11.attention.self.key.lora_A.default').weight
-        # A_vlin_weight=self.auto_model.get_submodule('base_model.model.encoder.layer.11.attention.self.value.lora_A.default').weight
-        # A_weight=self.auto_model.get_submodule('base_model.model.transformer.layer.5.attention.out_lin.lora_A.default').weight#.mean(dim=0)
-        #a max_ = torch.max(A_weight, 1)[0]
-
-        # A_weight=self.auto_model.get_submodule('base_model.model.encoder.layer.11.attention.self.value.lora_A.default').weight.mean(dim=0)
-        
-        # logger.info("Making embedding")
-        if os.path.exists('/tmp2/ikwang/beir/examples/retrieval/training/full_emb.txt'):
-            file=open('/tmp2/ikwang/beir/examples/retrieval/training/full_emb.txt','a')
-        else:
-            file=open('/tmp2/ikwang/beir/examples/retrieval/training/full_emb.txt','w')     
-        s1=time.time()
+        elif self.lora_type=='vera': 
+            modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_magnitude_vector'  in name and str(self.num_hidden_layers-1) in name]
+            A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
+            features.update({'last_lora':A_mag_weight.weight.mean(dim=0)})
         output_states = self.auto_model(**trans_features, return_dict=False)
-        s2=time.time()
-        file.write(str(s2-s1)+'\n')
-        # lora_E=self.auto_model.get_submodule('base_model.model.transformer.layer.5.attention.out_lin.lora_E').default
-        # print('ranks ', torch.linalg.matrix_rank(lora_E))
-        # print('ranks ', lora_E.shape)
-        # if B_weight.sum()==0:
-        #     features.update({'last_lora':A_weight})
-        # else:
-        #     features.update({'last_lora':A_weight*B_weight})        
-        # features.update({'last_lora':A_total_weight.mean(dim=0)})
-        # linear=nn.Linear(32,1).to('cuda')
-        # weight=linear(A_qlin_weight.T).mean(dim=0)
 
         output_tokens = output_states[0]
         features.update({'token_embeddings': output_tokens, 'attention_mask': features['attention_mask']})

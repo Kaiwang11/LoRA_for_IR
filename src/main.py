@@ -40,6 +40,7 @@ parser.add_argument('-batch','--batch_size',type=int,help='batch zise',default=3
 parser.add_argument('-target_module','--target_module',type=str,help='target module',default='["q_lin","out_lin","k_lin","v_lin"]')
 # parser.add_argument('-pool','--pool_mode',type=str,help='pooling_mode',default=None)
 args = parser.parse_args()
+lora_type=None
 if args.vera==True:
 
     lora_config =VeraConfig(
@@ -48,6 +49,7 @@ if args.vera==True:
                 bias="all", 
                 modules_to_save=["decode_head"],
             )
+    lora_type='vera'
 else:
     lora_config = LoraConfig(
          r=args.rank,
@@ -58,6 +60,8 @@ else:
         modules_to_save=["decode_head"],
         use_dora=args.dora
     )
+    if args.dora:
+        lora_type='dora'
 # lora_config = AdaLoraConfig(
 #     peft_type="ADALORA", target_r=16, init_r=16,lora_alpha=64, target_modules=["q_lin","v_lin","k_lin","out_lin"],
 #     lora_dropout=0.01,
@@ -90,7 +94,7 @@ dev_corpus, dev_queries, dev_qrels = GenericDataLoader(data_path_test).load(spli
 
 tracemalloc.start()
 model_name=args.model_name #"hkunlp/instructor-xl"#distilbert-base-uncased"#"intfloat/e5-small"##"# "BAAI/bge-small-en"#v#
-word_embedding_model = models.LoraTransformer(model_name,lora_config=lora_config, max_seq_length=350,experiment_type=args.experiment_type)
+word_embedding_model = models.LoraTransformer(model_name,lora_config=lora_config, max_seq_length=350,experiment_type=args.experiment_type,lora_type=lora_type)
 # word_embedding_model = models.PeftTransformer(model_name,peft_config=lora_config, max_seq_length=350)
 pooling_model = models.Pooling(pooling_mode=args.pool_mode,word_embedding_dimension=word_embedding_model.get_word_embedding_dimension())
 
