@@ -25,7 +25,6 @@ python src/main.py \
 -vera False\
 ```
 For more help :
-```
 ```bash
 python src/main.py -h 
 ```
