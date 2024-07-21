@@ -27,7 +27,7 @@ class LoraTransformer(nn.Module):
                  model_args: Dict = {}, cache_dir: Optional[str] = None,
                  tokenizer_args: Dict = {}, do_lower_case: bool = False,
                  tokenizer_name_or_path : str = None,
-                 lora_config:Dict={} ,experiment_type:str=None,lora_type=lora_type):
+                 lora_config:Dict={} ,experiment_type:str=None,lora_type=None):
         
 
         super(LoraTransformer, self).__init__()
@@ -119,9 +119,14 @@ class LoraTransformer(nn.Module):
             weight=soft(torch.matmul(A_qlin_weight.transpose(1,0),A_klin_weight/math.sqrt(384)))*A_vlin_weight.mean(dim=0)
             features.update({'last_lora':weight})
         elif self.lora_type=='vera': 
+            modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'vera_lambda_b'  in name and str(self.num_hidden_layers-1) in name]
+            A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
+            features.update({'last_lora':A_mag_weight.mean(dim=0)})
+        elif self.lora_type=='dora':
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_magnitude_vector'  in name and str(self.num_hidden_layers-1) in name]
             A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
             features.update({'last_lora':A_mag_weight.weight.mean(dim=0)})
+
         output_states = self.auto_model(**trans_features, return_dict=False)
 
         output_tokens = output_states[0]

@@ -11,7 +11,7 @@ import tracemalloc
 import argparse
 # from peft.tuners.dora import DoraConfig
 # from peft.tuners.rosa import RosaConfig, RosaSchedulerT,
-from peft import LoraConfig,LoftQConfig,get_peft_model,AdaLoraConfig,IA3Config,LoHaConfig,LoKrConfig
+from peft import LoraConfig,LoftQConfig,get_peft_model,AdaLoraConfig,LoHaConfig,LoKrConfig,VeraConfig
 import torch
 from lora_plus import create_loraplus_optimizer
 # loftq_config = LoftQConfig(loftq_bits=4)
@@ -109,14 +109,10 @@ train_dataloader = retriever.prepare_train(train_samples, shuffle=True)
 
 
 train_loss = losses.MultipleNegativesRankingLoss(model=retriever.model)
-# train_loss = losses.CachedMultipleNegativesRankingLoss(model=retriever.model)
-# train_loss = losses.MultipleNegativesSymmetricRankingLoss(model=retriever.model)
-
-
 #### Prepare dev evaluato
 ir_evaluator = retriever.load_ir_evaluator(dev_corpus, dev_queries, dev_qrels)
 
-model_save_path = os.path.join(pathlib.Path(__file__).parent.absolute(), f"output/lora_{args.experiment_name}_epoch{num_epochs}", "{}-v1-{}".format(model_name, dataset))
+model_save_path = os.path.join(f"checkpoints/lora_{args.experiment_name}_epoch{num_epochs}", "{}-v1-{}".format(model_name, dataset))
 
 os.makedirs(model_save_path, exist_ok=True)
 
