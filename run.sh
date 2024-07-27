@@ -1,5 +1,6 @@
 directory="./datasets"
-if [ -z "$(ls -A "$directory")" ]; then
+subdir_count=$(find "$directory" -mindepth 1 -type d | wc -l)
+if [ -z "$(ls -A "$directory")" ] || [ "$subdir_count" -lt 4 ]; then
 
 	for dataset in 'fiqa' 'nfcorpus' 'scifact' 'nq'
 	do
