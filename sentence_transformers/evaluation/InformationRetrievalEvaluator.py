@@ -72,21 +72,21 @@ class InformationRetrievalEvaluator(SentenceEvaluator):
         self.csv_headers = ["epoch", "steps"]
 
         for score_name in self.score_function_names:
-            for k in accuracy_at_k:
-                self.csv_headers.append("{}-Accuracy@{}".format(score_name, k))
+            # for k in accuracy_at_k:
+            #     self.csv_headers.append("{}-Accuracy@{}".format(score_name, k))
 
             for k in precision_recall_at_k:
-                self.csv_headers.append("{}-Precision@{}".format(score_name, k))
+                # self.csv_headers.append("{}-Precision@{}".format(score_name, k))
                 self.csv_headers.append("{}-Recall@{}".format(score_name, k))
 
-            for k in mrr_at_k:
-                self.csv_headers.append("{}-MRR@{}".format(score_name, k))
+            # for k in mrr_at_k:
+                # self.csv_headers.append("{}-MRR@{}".format(score_name, k))
 
             for k in ndcg_at_k:
                 self.csv_headers.append("{}-NDCG@{}".format(score_name, k))
 
-            for k in map_at_k:
-                self.csv_headers.append("{}-MAP@{}".format(score_name, k))
+            # for k in map_at_k:
+                # self.csv_headers.append("{}-MAP@{}".format(score_name, k))
 
     def __call__(self, model, output_path: str = None, epoch: int = -1, steps: int = -1, *args, **kwargs) -> float:
         if epoch != -1:

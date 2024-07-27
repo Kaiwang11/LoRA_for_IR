@@ -1,7 +1,8 @@
 from sentence_transformers import SentenceTransformer, SentencesDataset, datasets
 from sentence_transformers.evaluation import SentenceEvaluator, SequentialEvaluator, InformationRetrievalEvaluator
 from sentence_transformers.readers import InputExample
-from transformers import AdamW
+# from transformers import AdamWi
+import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
@@ -116,8 +117,8 @@ class TrainRetriever:
             steps_per_epoch = None,
             scheduler: str = 'WarmupLinear',
             warmup_steps: int = 10000,
-            optimizer_class: Optimizer = AdamW,
-            optimizer_params : Dict[str, object]= {'lr': 2e-5, 'eps': 1e-6, 'correct_bias': False},
+            optimizer_class: Optimizer = torch.optim.AdamW,
+            optimizer_params : Dict[str, object]= {'lr': 2e-5, 'eps': 1e-6},
             weight_decay: float = 0.01,
             evaluation_steps: int = 0,
             output_path: str = None,

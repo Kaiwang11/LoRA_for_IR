@@ -11,16 +11,16 @@ else
 fi
 
 data='scifact'
-echo "Run simple LoRA train  on scifact in 1  epcoh  "
+echo "\n Run simple LoRA train  on scifact in 1  epcoh  "
 python src/main.py -d scifact -epoch 1 
 
 
-echo "Run pure LoRA training  experiments on" $data
+echo "\nRun pure LoRA training  experiments on" $data
 python src/main.py -d $data  
-echo "Run SMRW experiments on" $data
+echo "\nRun SMRW experiments on" $data
 python src/main.py -d $data -exp_type single -p True -exp_name SMRW
 
-echo "Run MMRW experiments on" $data
+echo "\nRun MMRW experiments on" $data
 python src/main.py -d $data -exp_type multi -p True -exp_name MMRW
 
 

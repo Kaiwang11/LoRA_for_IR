@@ -9,8 +9,6 @@ import logging
 from time import time
 import tracemalloc
 import argparse
-# from peft.tuners.dora import DoraConfig
-# from peft.tuners.rosa import RosaConfig, RosaSchedulerT,
 from peft import LoraConfig,LoftQConfig,get_peft_model,AdaLoraConfig,LoHaConfig,LoKrConfig,VeraConfig
 import torch
 from lora_plus import create_loraplus_optimizer
@@ -29,7 +27,8 @@ parser.add_argument('-dora','--dora',type=bool,help='dora',default=False)
 parser.add_argument('-vera','--vera',type=bool,help='vera',default=False)
 parser.add_argument('-batch','--batch_size',type=int,help='batch zise',default=32)
 parser.add_argument('-target_module','--target_module',type=str,help='target module',default='["q_lin","out_lin","k_lin","v_lin"]')
-# parser.add_argument('-pool','--pool_mode',type=str,help='pooling_mode',default=None)
+
+
 args = parser.parse_args()
 lora_type=None
 if args.vera==True:
@@ -37,7 +36,7 @@ if args.vera==True:
     lora_config =VeraConfig(
                 r=args.rank,
                 target_modules=json.loads(args.target_module),
-                bias="all", 
+                # bias="all", 
                 modules_to_save=["decode_head"],
             )
     lora_type='vera'
@@ -124,6 +123,6 @@ retriever.fit(train_objectives=[(train_dataloader, train_loss)],
                 use_amp=True,
              optimizer_custom=optimizer
              )
-end=time()
-print(f'Total Time : {end-start}')
-print(lora_config)
+print("Training ends")
+# print(lora_config)
+
