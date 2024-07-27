@@ -29,6 +29,35 @@ git clone git@github.com:Kaiwang11/LoRA_for_IR.git
 cd LoRA_for_IR
 pip install -e.
 ```
+##Scripts
+###Run all
+Download dataset, test  and run LoRA,SMRW,MMRW on scifact.
+```
+./run.sh 
+```
+###SMWR
+Run SMWR on all datasets
+```
+./scripts/SMWR.sh
+```
+
+###MMWR
+Run SMWR on all datasets
+```
+./scripts/MMWR.sh
+```
+
+###Pure LoRA
+Run LoRA finetune  on all datasets
+```
+./scripts/pure_LoRA.sh
+```
+
+###Variants
+Run DoRA & Vera on all datasets
+```
+./scripts/variants.sh
+```
 ### Data Loading
 
 To download the data(fiqa,nq,nfcorpus,scifact), run the following command:
