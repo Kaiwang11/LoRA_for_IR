@@ -40,6 +40,7 @@ class LoraTransformer(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path if tokenizer_name_or_path is not None else model_name_or_path, cache_dir=cache_dir, **tokenizer_args,pad_token='[PAD]')
         self.exp_type=experiment_type
         self.lora_type=lora_type
+        self.model_name=model_name_or_path
         #No max_seq_length set. Try to infer from model
         if max_seq_length is None:
             if hasattr(self.auto_model, "config") and hasattr(self.auto_model.config, "max_position_embeddings") and hasattr(self.tokenizer, "model_max_length"):
@@ -99,33 +100,50 @@ class LoraTransformer(nn.Module):
         trans_features = {'input_ids': features['input_ids'], 'attention_mask': features['attention_mask']}
         if 'token_type_ids' in features:
             trans_features['token_type_ids'] = features['token_type_ids']
-        # B_weight=self.auto_model.get_submodule('base_model.model.transformer.layer.5.attention.out_lin.lora_B.default').weight.mean(dim=1)
-        # B_vlin_weight=self.auto_model.get_submodule('base_model.model.transformer.layer.5.attention.v_lin.lora_B.default').weight.mean(dim=1)
-        if self.exp_type=='single':
+        if self.exp_type in ('single','multi' ) and self.lora_type==None:#or self.exp_type=='multi':
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_A' in name and str(self.num_hidden_layers-1) in name]
-            # A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
-            # A_qlin_weight=self.auto_model.get_submodule(modules[0][:-7]).weight
-            # A_klin_weight=self.auto_model.get_submodule(modules[1][:-7]).weight
-            # A_vlin_weight=self.auto_model.get_submodule(modules[2][:-7]).weight
-            A_total_weight=self.auto_model.get_submodule(modules[-2][:-7]).weight
-            features.update({'last_lora':A_total_weight.mean(dim=0)})
-        elif self.exp_type=='multi':
-            modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_A' in name and str(self.num_hidden_layers-1) in name]
-            # A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
-            A_qlin_weight=self.auto_model.get_submodule(modules[0][:-7]).weight
-            A_klin_weight=self.auto_model.get_submodule(modules[1][:-7]).weight
-            A_vlin_weight=self.auto_model.get_submodule(modules[2][:-7]).weight
-            soft=nn.Softmax(1)
-            weight=soft(torch.matmul(A_qlin_weight.transpose(1,0),A_klin_weight/math.sqrt(384)))*A_vlin_weight.mean(dim=0)
-            features.update({'last_lora':weight})
-        elif self.lora_type=='vera': 
+        elif self.lora_type=='vera':
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'vera_lambda_b'  in name and str(self.num_hidden_layers-1) in name]
-            A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
-            features.update({'last_lora':A_mag_weight.mean(dim=0)})
-        elif self.lora_type=='dora':
+        elif self.lora_type=='dora': 
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_magnitude_vector'  in name and str(self.num_hidden_layers-1) in name]
-            A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
-            features.update({'last_lora':A_mag_weight.weight.mean(dim=0)})
+        # import IPython;IPython.embed(colors='linux');exit(1)
+        if self.exp_type=='single':
+            if self.model_name!='distilbert-base-uncased':
+                module=[mod for mod in modules if 'key' in mod]
+                weights=self.auto_model.get_submodule(module[0][:-7])
+            else:
+                weights=[self.auto_model.get_submodule(name.rsplit('.', 1)[0]) for name in modules] 
+                # A_total_weight=self.auto_model.get_submodule(modules[-2][:-7]).weight
+            if self.lora_type==None:
+                features.update({'last_lora':weights[-1].weight.mean(dim=0)})#A_total_weight.mean(dim=0)})
+            else:
+                features.update({'last_lora':weights[-1].default.mean(dim=0)})#A_total_weight.mean(dim=0)})
+
+        elif self.exp_type=='multi':
+            weights=[self.auto_model.get_submodule(name.rsplit('.', 1)[0]) for name in modules] 
+            # import IPython;IPython.embed(colors='linux');exit(1)
+            if self.lora_type==None:
+                A_qlin_weight=weights[0].weight
+                A_klin_weight=weights[1].weight
+                A_vlin_weight=weights[2].weight
+                A_outlin_weight=weights[3].weight
+            else:
+                A_qlin_weight=weights[0].default
+                A_klin_weight=weights[1].default
+                A_vlin_weight=weights[2].default
+                A_outlin_weight=weights[3].default
+            soft=nn.Softmax(dim=0)
+            weight=soft(A_qlin_weight*(A_klin_weight/math.sqrt(768)))*A_vlin_weight*A_outlin_weight
+            # import IPython;IPython.embed(colors='linux');exit(1)
+            # weight=torch.matmul(soft(torch.matmul(A_qlin_weight,A_klin_weight.transpose(1,0)/math.sqrt(768))),A_vlin_weight)
+            # import IPython;IPython.embed(colors='linux');exit(1)
+            features.update({'last_lora':weight.mean(dim=0)})
+        # elif self.lora_type=='vera': 
+        #     A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
+        #     features.update({'last_lora':A_mag_weight.mean(dim=0)})
+        # elif self.lora_type=='dora':
+        #     A_mag_weight=self.auto_model.get_submodule(modules[-1][:-8]).default
+        #     features.update({'last_lora':A_mag_weight.weight.mean(dim=0)})
 
         output_states = self.auto_model(**trans_features, return_dict=False)
 
