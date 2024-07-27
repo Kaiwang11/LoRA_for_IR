@@ -9,7 +9,18 @@ if [ -z "$(ls -A "$directory")" ] || [ "$subdir_count" -lt 4 ]; then
 else
 	echo "All data is ready to run "
 fi
+
+data='scifact'
 echo "Run simple LoRA train  on scifact in 1  epcoh  "
 python src/main.py -d scifact -epoch 1 
+
+
+echo "Run pure LoRA training  experiments on" $data
+python src/main.py -d $data  
+echo "Run SMRW experiments on" $data
+python src/main.py -d $data -exp_type single -p True -exp_name SMRW
+
+echo "Run MMRW experiments on" $data
+python src/main.py -d $data -exp_type multi -p True -exp_name MMRW
 
 
