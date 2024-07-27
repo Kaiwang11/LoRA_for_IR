@@ -320,23 +320,23 @@ class InformationRetrievalEvaluator(SentenceEvaluator):
 
 
     def output_scores(self, scores):
-        for k in scores['accuracy@k']:
-            logger.info("Accuracy@{}: {:.2f}%".format(k, scores['accuracy@k'][k]*100))
+        # for k in scores['accuracy@k']:
+        #     logger.info("Accuracy@{}: {:.2f}%".format(k, scores['accuracy@k'][k]*100))
 
-        for k in scores['precision@k']:
-            logger.info("Precision@{}: {:.2f}%".format(k, scores['precision@k'][k]*100))
+        # for k in scores['precision@k']:
+        #     logger.info("Precision@{}: {:.2f}%".format(k, scores['precision@k'][k]*100))
 
         for k in scores['recall@k']:
             logger.info("Recall@{}: {:.2f}%".format(k, scores['recall@k'][k]*100))
 
-        for k in scores['mrr@k']:
-            logger.info("MRR@{}: {:.4f}".format(k, scores['mrr@k'][k]))
+        # for k in scores['mrr@k']:
+        #     logger.info("MRR@{}: {:.4f}".format(k, scores['mrr@k'][k]))
 
         for k in scores['ndcg@k']:
             logger.info("NDCG@{}: {:.4f}".format(k, scores['ndcg@k'][k]))
 
-        for k in scores['map@k']:
-            logger.info("MAP@{}: {:.4f}".format(k, scores['map@k'][k]))
+        # for k in scores['map@k']:
+        #     logger.info("MAP@{}: {:.4f}".format(k, scores['map@k'][k]))
 
 
     @staticmethod
