@@ -27,20 +27,53 @@ parser.add_argument('-dora','--dora',type=bool,help='dora',default=False)
 parser.add_argument('-vera','--vera',type=bool,help='vera',default=False)
 parser.add_argument('-batch','--batch_size',type=int,help='batch zise',default=32)
 parser.add_argument('-target_module','--target_module',type=str,help='target module',default='["q_lin","out_lin","k_lin","v_lin"]')
-
+parser.add_argument('-lora_type','--lora_type',type=str,help='lora type : could be vera,dora,loha,lokr,adalora or none for lora',default=None)
 
 args = parser.parse_args()
-lora_type=None
-if args.vera==True:
-
+vera=False
+dora=False
+if args.lora_type=='vera':
     lora_config =VeraConfig(
                 r=args.rank,
                 target_modules=json.loads(args.target_module),
                 # bias="all", 
                 modules_to_save=["decode_head"],
             )
-    lora_type='vera'
+    vera=True
+elif args.lora_type=='loha':
+    lora_config=LoHaConfig(
+        r=args.rank,
+        lora_alpha=args.rank*2,
+        target_modules=json.loads(args.target_module),
+        modules_to_save=["decode_head"],
+        rank_dropout=0.0,
+        module_dropout=0.0,
+        init_weights=True,
+        use_effective_conv2d=True,
+    )
+
+elif args.lora_type=='lokr':
+    lora_config=LoKrConfig(
+        r=args.rank,
+        lora_alpha=args.rank*2,
+        target_modules=json.loads(args.target_module),
+        modules_to_save=["decode_head"],
+        rank_dropout=0.0,
+        module_dropout=0.0,
+        init_weights=True,
+        use_effective_conv2d=True,
+    )
+elif args.lora_type=='adalora':
+
+    lora_config = AdaLoraConfig(
+         r=args.rank,
+        lora_alpha=args.rank*2,
+        target_modules=json.loads(args.target_module),
+        lora_dropout=0.5,
+    )
 else:
+    if args.lora_type=='dora':
+        dora=True
     lora_config = LoraConfig(
          r=args.rank,
         lora_alpha=args.rank*2,
@@ -48,14 +81,8 @@ else:
         lora_dropout=0.5,
         bias="all", #‘none’, ‘all’ or ‘lora_only'
         modules_to_save=["decode_head"],
-        use_dora=args.dora
+        use_dora=dora
     )
-    if args.dora:
-        lora_type='dora'
-# lora_config = AdaLoraConfig(
-#     peft_type="ADALORA", target_r=16, init_r=16,lora_alpha=64, target_modules=["q_lin","v_lin","k_lin","out_lin"],
-#     lora_dropout=0.01,
-# )
 start=time()
 logging.basicConfig(format='%(asctime)s - %(message)s',datefmt='%Y-%m-%d %H:%M:%S',level=logging.INFO,handlers=[LoggingHandler()])
 
@@ -82,7 +109,7 @@ if args.experiment_type:
 else:
     pool_mode=args.pool_mode
 model_name=args.model_name 
-word_embedding_model = models.LoraTransformer(model_name,lora_config=lora_config, max_seq_length=350,experiment_type=args.experiment_type,lora_type=lora_type)
+word_embedding_model = models.LoraTransformer(model_name,lora_config=lora_config, max_seq_length=350,experiment_type=args.experiment_type,lora_type=args.lora_type)
 pooling_model = models.Pooling(pooling_mode=pool_mode,word_embedding_dimension=word_embedding_model.get_word_embedding_dimension())
 
 

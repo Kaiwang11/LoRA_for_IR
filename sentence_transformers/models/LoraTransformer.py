@@ -31,14 +31,14 @@ class LoraTransformer(nn.Module):
         
 
         super(LoraTransformer, self).__init__()
-        self.config_keys = ['max_seq_length', 'do_lower_case']
+        self.config_keys = ['max_seq_length', 'do_lower_case','experiment_type','lora_type']
         self.do_lower_case = do_lower_case
         # self.num_layers=config['num_']
         config = AutoConfig.from_pretrained(model_name_or_path, **model_args, cache_dir=cache_dir,output_hidden_states=True)
         self._load_model(model_name_or_path, config,lora_config, cache_dir)
         self.num_hidden_layers=config.num_hidden_layers
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path if tokenizer_name_or_path is not None else model_name_or_path, cache_dir=cache_dir, **tokenizer_args,pad_token='[PAD]')
-        self.exp_type=experiment_type
+        self.experiment_type=experiment_type
         self.lora_type=lora_type
         self.model_name=model_name_or_path
         #No max_seq_length set. Try to infer from model
@@ -100,14 +100,14 @@ class LoraTransformer(nn.Module):
         trans_features = {'input_ids': features['input_ids'], 'attention_mask': features['attention_mask']}
         if 'token_type_ids' in features:
             trans_features['token_type_ids'] = features['token_type_ids']
-        if self.exp_type in ('single','multi' ) and self.lora_type==None:#or self.exp_type=='multi':
+        if self.experiment_type in ('single','multi' ) and self.lora_type==None:#or self.experiment_type=='multi':
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_A' in name and str(self.num_hidden_layers-1) in name]
         elif self.lora_type=='vera':
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'vera_lambda_b'  in name and str(self.num_hidden_layers-1) in name]
         elif self.lora_type=='dora': 
             modules=[name for name,param in self.auto_model.named_parameters() if param.requires_grad and 'lora_magnitude_vector'  in name and str(self.num_hidden_layers-1) in name]
         # import IPython;IPython.embed(colors='linux');exit(1)
-        if self.exp_type=='single':
+        if self.experiment_type=='single':
             if self.model_name!='distilbert-base-uncased':
                 module=[mod for mod in modules if 'key' in mod]
                 weights=self.auto_model.get_submodule(module[0][:-7])
@@ -119,7 +119,7 @@ class LoraTransformer(nn.Module):
             else:
                 features.update({'last_lora':weights[-1].default.mean(dim=0)})#A_total_weight.mean(dim=0)})
 
-        elif self.exp_type=='multi':
+        elif self.experiment_type=='multi':
             weights=[self.auto_model.get_submodule(name.rsplit('.', 1)[0]) for name in modules] 
             # import IPython;IPython.embed(colors='linux');exit(1)
             if self.lora_type==None:
@@ -134,8 +134,8 @@ class LoraTransformer(nn.Module):
                 A_outlin_weight=weights[3].default
             soft=nn.Softmax(dim=0)
             weight=soft(A_qlin_weight*(A_klin_weight/math.sqrt(768)))*A_vlin_weight*A_outlin_weight
-            # import IPython;IPython.embed(colors='linux');exit(1)
             # weight=torch.matmul(soft(torch.matmul(A_qlin_weight,A_klin_weight.transpose(1,0)/math.sqrt(768))),A_vlin_weight)
+            # import IPython;IPython.embed(colors='linux');exit(1)
             # import IPython;IPython.embed(colors='linux');exit(1)
             features.update({'last_lora':weight.mean(dim=0)})
         # elif self.lora_type=='vera': 
@@ -215,19 +215,12 @@ class LoraTransformer(nn.Module):
 
         with open(sbert_config_path) as fIn:
             config = json.load(fIn)
-        lora_config_path='/tmp2/ikwang/beir/examples/retrieval/training/config/LoRA.json'
-        # with open(lora_config_path) as fIn:
-        #     lora_config_dict = json.load(fIn)
-        # lora_config = LoraConfig(lora_config_dict)
-        lora_config = LoraConfig(
-            r=32,
-            lora_alpha=64,
-            target_modules=["q_lin","k_lin","v_lin","out_lin"],
-            lora_dropout=0.1,
-            bias="none", #‘none’, ‘all’ or ‘lora_only'
-            # modules_to_save=["decode_head"],
-        )
-        return LoraTransformer(model_name_or_path=input_path,lora_config=lora_config)# **config)
+        lora_config_path = os.path.join(input_path, 'adapter_config.json')
+        # if os.path.exists(lora_config_path):
+        with open(lora_config_path) as fIn:
+            lora_config = json.load(fIn)
+            lora_config=LoraConfig(lora_config,target_modules=lora_config['target_modules'])
+        return LoraTransformer(model_name_or_path=input_path,lora_config=lora_config, **config)
     
 
 
